@@ -1,25 +1,151 @@
 ---
 title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+author: "Thomas Kanold"
+date: "15. November 2014"
+output: html_document
 ---
 
 
 ## Loading and preprocessing the data
+```{r libraries,message=FALSE, cache=FALSE}
+library(dplyr)
+```
 
+```{r loading data}
+
+
+fileName <- "activity.csv"
+surv <- read.csv(fileName)
+surv  <- tbl_df(surv)
+```
 
 
 ## What is mean total number of steps taken per day?
+```{r}
+steps_taken <- surv %>% 
+                select(steps, date) %>% 
+                filter(!is.na(steps)) %>% 
+                group_by(date) %>%  
+                summarize(mean(steps))
+st <- steps_taken[,2]
+```
+
+```{r histogram}
+hist(st, breaks=20, freq=FALSE, xlab="steps taken", main="Daily Steps", col="lightgreen")
+#curve(dnorm(x, mean=mean(st), sd=sd(st)), add=TRUE, col="darkblue", lwd=2)
+
+
+st_mean <- mean(st)
+st_median <- median(st)
+```
+
+The mean total number of steps taken per day is `r round(st_mean,3)`, the median is `r round(st_median,3)`.
 
 
 
 ## What is the average daily activity pattern?
 
+```{r plotting average steps a day}
+
+steps_taken <- surv %>% 
+  select(steps, interval) %>% 
+  filter(!is.na(steps)) %>% 
+  group_by(interval) %>%  
+  summarize(mm = mean(steps))
+st5 <- steps_taken[,1:2]
+
+plot(st5, type='l', main="Steps a Day")
+```
+
+```{r max_average}
+max_steps <- surv %>% 
+  select(steps, interval) %>% 
+  filter(!is.na(steps)) %>% 
+  group_by(interval) %>%  
+  summarize(mm = mean(steps))%>% 
+  arrange(desc(mm) )
+
+```
+
+
+The time interval `r max_steps[1,1]` has the highest average (over all days)  step count with `r round(max_steps[1,2],3)`.
 
 
 ## Imputing missing values
 
 
+```{r}
+na_steps <- surv %>% filter(is.na(steps)) %>% 
+  select(steps, interval) 
+```
+
+The number of rows with missing values is `r nrow(na_steps)`.
+
+The strategy to fill in the missing NA values is choosing the average value of that time interval.
+```{r NA to something}
+# A function that takes the input and gives it back 
+# NA will be the average of this time interval
+filler <- function (steps, mm) { 
+  res <- ifelse(!is.na(steps),steps,mm)
+}
+
+survm <- merge(surv, st5)
+survm <- mutate(survm, steps = filler(steps, mm))
+
+survm <- survm %>% select(interval, date, steps) %>% arrange(desc(date))
+
+```
+
+```{r}
+steps_taken <- survm %>% select(steps, date) %>% filter(!is.na(steps)) %>% group_by(date) %>%  summarize(mean(steps))
+st <- steps_taken[,2]
+hist(st, breaks=20, freq=FALSE, xlab="steps taken", main="Daily Steps", col="lightgreen")
+#curve(dnorm(x, mean=mean(st), sd=sd(st)), add=TRUE, col="darkblue", lwd=2)
+
+
+survm_mean <- mean(st)
+survm_median <- round(median(st))
+```
+
+The mean total number of steps taken per day is `r round(survm_mean,3)`, 
+the median is `r round(survm_median,3)`.
+The difference between the mean values is `r survm_mean - st_mean`, median difference is
+`r survm_median - st_median`.
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+```{r}
+####
+
+
+itsAWeekend <- function(date) {
+    date2 <- as.POSIXlt(surv$date)$wday
+    #weekdays(as.Date(surv$date))
+    res <- ifelse(date2==0 | date2==6, "weekend", "weekday")  
+}
+
+survm_weekends <- mutate(survm, dayType = itsAWeekend(date))
+
+
+
+max_steps <- survm_weekends %>% 
+  select(steps, interval, dayType) %>% 
+  group_by(dayType, interval) %>%  
+  summarize(mm = mean(steps))
+
+
+par(mfrow=c(2,1)) 
+
+plot(max_steps[max_steps$dayType == "weekday",2:3], type='l', main="weekday")
+plot(max_steps[max_steps$dayType != "weekday",2:3], type='l', main="weekend")
+
+```
+
+
+
+
+
+
+
+
+
