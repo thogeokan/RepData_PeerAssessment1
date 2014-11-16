@@ -7,8 +7,10 @@ output: html_document
 
 
 ## Loading and preprocessing the data
-```{r libraries,message=FALSE, cache=FALSE}
+```{r libraries,message=FALSE, cache=FALSE, fig.path=""}
 library(dplyr)
+library(knitr)
+opts_chunk$set(fig.path = "./figure/")
 ```
 
 ```{r loading data}
